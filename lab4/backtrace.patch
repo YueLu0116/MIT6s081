@@ -1,0 +1,77 @@
+From c27d343bc784efe1fcbdcb1961d21f5e929fe933 Mon Sep 17 00:00:00 2001
+From: YueLu0116 <bit_drinkwater@163.com>
+Date: Tue, 3 May 2022 21:43:50 +0800
+Subject: [PATCH] Finish lab4
+
+---
+ kernel/defs.h    |  1 +
+ kernel/printf.c  | 12 ++++++++++++
+ kernel/riscv.h   |  8 ++++++++
+ kernel/sysproc.c |  2 ++
+ 4 files changed, 23 insertions(+)
+
+diff --git a/kernel/defs.h b/kernel/defs.h
+index 3564db4..fba54f0 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -80,6 +80,7 @@ int             pipewrite(struct pipe*, uint64, int);
+ void            printf(char*, ...);
+ void            panic(char*) __attribute__((noreturn));
+ void            printfinit(void);
++void            backtrace();
+ 
+ // proc.c
+ int             cpuid(void);
+diff --git a/kernel/printf.c b/kernel/printf.c
+index e1347de..baaf964 100644
+--- a/kernel/printf.c
++++ b/kernel/printf.c
+@@ -132,3 +132,15 @@ printfinit(void)
+   initlock(&pr.lock, "pr");
+   pr.locking = 1;
+ }
++
++void
++backtrace()
++{
++  uint64 fp = r_fp();
++  while(fp != PGROUNDUP(fp))
++  {
++    uint64 ra = *(uint64*)(fp-8);
++    printf("%p\n", ra);
++    fp = *(uint64*)(fp-16);
++  }
++}
+diff --git a/kernel/riscv.h b/kernel/riscv.h
+index 1691faf..fe625ff 100644
+--- a/kernel/riscv.h
++++ b/kernel/riscv.h
+@@ -364,3 +364,11 @@ sfence_vma()
+ 
+ typedef uint64 pte_t;
+ typedef uint64 *pagetable_t; // 512 PTEs
++
++static inline uint64
++r_fp()
++{
++  uint64 x;
++  asm volatile("mv %0, s0" : "=r" (x) );
++  return x;
++}
+\ No newline at end of file
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index e8bcda9..a68e40a 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -58,6 +58,8 @@ sys_sleep(void)
+   int n;
+   uint ticks0;
+ 
++  backtrace();
++  
+   if(argint(0, &n) < 0)
+     return -1;
+   acquire(&tickslock);
+-- 
+2.34.1
+
